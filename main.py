@@ -1,3 +1,4 @@
+# from crypt import methods
 from flask import Flask, render_template, redirect, url_for, request
 from flask_bootstrap import Bootstrap5
 from flask_sqlalchemy import SQLAlchemy
@@ -12,6 +13,11 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = '8BYkEfBA6O6donzWlSihBXox7C0sKR6b'
 Bootstrap5(app)
 
+# creating forms
+class MyForm(FlaskForm):
+    rating = StringField('Your Rating out of 10 e.g. 7.5', validators=[DataRequired()])
+    review = StringField('Your Review', validators=[DataRequired()])
+
 # CREATE DB
 class Base(DeclarativeBase):
   pass
@@ -23,13 +29,13 @@ db.init_app(app)
 # CREATE TABLE
 class Movies(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True)
-    title: Mapped[str] = mapped_column(unique=True, nullable=False)
-    year: Mapped[int] = mapped_column(nullable=False)
-    description: Mapped[str] = mapped_column(nullable=False)
-    rating: Mapped[float] = mapped_column(nullable=False)
-    ranking: Mapped[int] = mapped_column(nullable=False)
-    review: Mapped[str] = mapped_column(nullable=False)
-    img_url: Mapped[str] = mapped_column(nullable=False)
+    title: Mapped[str] = mapped_column(unique=True, nullable=True)
+    year: Mapped[int] = mapped_column(nullable=True)
+    description: Mapped[str] = mapped_column(nullable=True)
+    rating: Mapped[float] = mapped_column(nullable=True)
+    ranking: Mapped[int] = mapped_column(nullable=True)
+    review: Mapped[str] = mapped_column(nullable=True)
+    img_url: Mapped[str] = mapped_column(nullable=True)
 
 with app.app_context():
     db.create_all()
@@ -59,11 +65,25 @@ with app.app_context():
 
 
 
+
 @app.route("/")
 def home():
     result = db.session.execute(db.select(Movies).order_by(Movies.title))
     all_movies = result.scalars()
     return render_template("index.html", movies = all_movies)
+
+@app.route("/edit/<int:movie_id>", methods = ["GET", "POST"])
+def rate_movie(movie_id):
+    edit_form = MyForm()
+    movie_to_update = db.get_or_404(Movies, movie_id)
+    # result = db.session.execute(db.select(Movies).order_by(Movies.title))
+    # movie_name = result.scalar_one()
+    if edit_form.validate_on_submit():
+        movie_to_update.rating = edit_form.rating.data
+        movie_to_update.review = edit_form.review.data
+        db.session.commit()
+        return redirect(url_for('home'))
+    return render_template('edit.html', form=edit_form, movie=movie_to_update)
 
 
 if __name__ == '__main__':
