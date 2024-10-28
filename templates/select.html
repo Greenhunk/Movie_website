@@ -5,9 +5,11 @@
 {% block content %}
 <div class="container">
     <h1 class="heading">Select Movie</h1>
-  <p>
-    <a href="#"> MOVIE TITLE - MOVIE RELEASE DATE</a>
-  </p>
+    {% for data in datas %}
+      <p>
+        <a href="{{ url_for('home', movie_id_api = data['id']) }}"> {{data["title"]}} - {{data["release_date"]}}</a>
+      </p>
+    {% endfor %}
 
 </div>
 {% endblock %}

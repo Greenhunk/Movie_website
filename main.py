@@ -9,6 +9,8 @@ from wtforms import StringField, SubmitField
 from wtforms.validators import DataRequired
 import requests
 
+
+
 app = Flask(__name__)
 app.config['SECRET_KEY'] = '8BYkEfBA6O6donzWlSihBXox7C0sKR6b'
 Bootstrap5(app)
@@ -17,6 +19,11 @@ Bootstrap5(app)
 class MyForm(FlaskForm):
     rating = StringField('Your Rating out of 10 e.g. 7.5', validators=[DataRequired()])
     review = StringField('Your Review', validators=[DataRequired()])
+
+class MyFormAdd(FlaskForm):
+    movie_title = StringField('Movie Title', validators=[DataRequired()])
+
+
 
 # CREATE DB
 class Base(DeclarativeBase):
@@ -65,8 +72,33 @@ with app.app_context():
 
 @app.route("/")
 def home():
+
+
     result = db.session.execute(db.select(Movies).order_by(Movies.title))
     all_movies = result.scalars()
+
+    movie_id_api = request.args.get("movie_id_api")
+    if movie_id_api:
+
+        headers = {
+            "accept": "application/json",
+            "Authorization": "Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI5YmY4NTI0NDliYWRhN2MwOTk1NGM2ZmZiODhmMTNjYSIsIm5iZiI6MTczMDAxNDA2MS45OTMzODcsInN1YiI6IjY3MWRlOTFmMWVhMzM5MjgyOTdkN2Y0YiIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.riXtBNN7lgKfrJR5g2axHYC_uYvtGQr7r5NHraYF_1w"
+        }
+        response = requests.get(f"https://api.themoviedb.org/3/movie/{movie_id_api}", headers=headers)
+        api_data_id = response.json()
+        print(api_data_id['title'])
+
+        new_movie_from_api = Movies(
+            title=api_data_id['title'],
+            year=api_data_id['release_date'],
+            description=api_data_id['overview'],
+            rating=7.3,
+            ranking=10,
+            review="My favourite character was the caller.",
+            img_url= f"https://image.tmdb.org/t/p/w500{api_data_id['poster_path']}")
+
+        db.session.add(new_movie_from_api)
+        db.session.commit()
     return render_template("index.html", movies = all_movies)
 
 @app.route("/edit/<int:movie_id>", methods = ["GET", "POST"])
@@ -88,6 +120,31 @@ def delete_movie(movie_id):
     db.session.delete(movie_to_delete)
     db.session.commit()
     return redirect(url_for("home"))
+
+@app.route("/add", methods=["GET", "POST"])
+
+def add_movie():
+    add = MyFormAdd()
+    if add.validate_on_submit():
+        movie_to_add = add.movie_title.data
+        parameters = {
+                    "query": movie_to_add
+
+                }
+        headers = {
+                    "accept": "application/json",
+                    "Authorization": "Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI5YmY4NTI0NDliYWRhN2MwOTk1NGM2ZmZiODhmMTNjYSIsIm5iZiI6MTczMDAxNDA2MS45OTMzODcsInN1YiI6IjY3MWRlOTFmMWVhMzM5MjgyOTdkN2Y0YiIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.riXtBNN7lgKfrJR5g2axHYC_uYvtGQr7r5NHraYF_1w"
+                }
+        response = requests.get("https://api.themoviedb.org/3/search/movie", headers=headers, params=parameters)
+        api_data = response.json()["results"]
+        # print(api_data)
+        return render_template('select.html', datas = api_data)
+
+
+
+    return render_template('add.html', form= add)
+
+
 
 
 if __name__ == '__main__':
