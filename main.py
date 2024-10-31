@@ -72,11 +72,29 @@ with app.app_context():
 
 @app.route("/")
 def home():
-
-
     result = db.session.execute(db.select(Movies).order_by(Movies.title))
     all_movies = result.scalars()
+    return render_template("index.html", movies = all_movies)
 
+@app.route("/edit", methods = ["GET", "POST"])
+def rate_movie():
+    edit_form = MyForm()
+    movie_id = request.args.get("movie_id")
+    movie_to_update = db.get_or_404(Movies, movie_id)
+
+
+    if movie_id:
+        if edit_form.validate_on_submit():
+            movie_to_update.rating = edit_form.rating.data
+            movie_to_update.review = edit_form.review.data
+            db.session.commit()
+            return redirect(url_for('home'))
+        return render_template('edit.html', form=edit_form, movie=movie_to_update)
+
+
+@app.route("/edit_from_api", methods=["GET", "POST"])
+def rate_movie_from_api():
+    edit_form = MyForm()
     movie_id_api = request.args.get("movie_id_api")
     if movie_id_api:
 
@@ -99,20 +117,9 @@ def home():
 
         db.session.add(new_movie_from_api)
         db.session.commit()
-    return render_template("index.html", movies = all_movies)
 
-@app.route("/edit/<int:movie_id>", methods = ["GET", "POST"])
-def rate_movie(movie_id):
-    edit_form = MyForm()
-    movie_to_update = db.get_or_404(Movies, movie_id)
-    # result = db.session.execute(db.select(Movies).order_by(Movies.title))
-    # movie_name = result.scalar_one()
-    if edit_form.validate_on_submit():
-        movie_to_update.rating = edit_form.rating.data
-        movie_to_update.review = edit_form.review.data
-        db.session.commit()
-        return redirect(url_for('home'))
-    return render_template('edit.html', form=edit_form, movie=movie_to_update)
+    return render_template('edit.html', form=edit_form, movie= new_movie_from_api)
+
 
 @app.route("/delete/<int:movie_id>")
 def delete_movie(movie_id):
